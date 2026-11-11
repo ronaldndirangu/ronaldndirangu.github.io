@@ -128,7 +128,9 @@ html[data-theme="dark"] .shot-dark { display: block; }
 .job-org::before { content: "· "; }
 .job-meta { margin-top: 8px; font: 11px/1.6 var(--mono); color: var(--cp-readable-muted); }
 .job-lede { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 32px; align-items: start; }
-.job-summary { max-width: 560px; font-size: 17px; line-height: 1.6; }
+.job-points { display: grid; gap: 10px; max-width: 560px; margin: 0; padding: 0; list-style: none; font-size: 16px; line-height: 1.55; }
+.job-points li { position: relative; padding-left: 22px; }
+.job-points li::before { content: ""; position: absolute; top: .78em; left: 0; width: 10px; height: 1.5px; background: var(--cp-accent); }
 .metric { position: relative; margin: 0; padding-top: 14px; border-top: 1px solid var(--cp-border-strong); }
 .metric dt { color: var(--cp-accent); font-size: clamp(38px, 4vw, 52px); font-weight: 500; line-height: 1; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
 .metric dd { max-width: 280px; margin: 10px 0 0; color: var(--cp-readable-muted); font-size: 14px; line-height: 1.55; }
@@ -266,7 +268,7 @@ html[data-theme="dark"] .shot-dark { display: block; }
   .job { padding: 32px 0; }
   .job-date { padding-top: 0; }
   .job-lede { grid-template-columns: 1fr; gap: 20px; }
-  .job-summary { font-size: 16px; }
+  .job-points { font-size: 15px; }
   .metric dt { font-size: 34px; }
   .side { padding-left: 16px; }
   .skills { grid-template-columns: 1fr; gap: 24px; }
