@@ -1,5 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <style>:root { --cp-accent: #b11f4b; --cp-accent-fg: #ffffff; }</style>
-  <rect width="64" height="64" rx="16" fill="var(--cp-accent)"/>
-  <text x="30" y="43" text-anchor="middle" font-family="Segoe UI, sans-serif" font-weight="700" font-size="36" letter-spacing="-3" fill="var(--cp-accent-fg)">rn.</text>
+  <defs>
+    <pattern id="d" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".7" fill="#ffb524" fill-opacity=".16"/></pattern>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#13170f"/>
+  <rect width="64" height="64" rx="14" fill="url(#d)"/>
+  <g fill="#ffb524">
+    <circle cx="12" cy="24" r="2.6"/><circle cx="12" cy="31" r="2.6"/><circle cx="12" cy="38" r="2.6"/><circle cx="12" cy="45" r="2.6"/>
+    <circle cx="19" cy="24" r="2.6"/><circle cx="26" cy="24" r="2.6"/>
+    <circle cx="33" cy="24" r="2.6"/><circle cx="33" cy="31" r="2.6"/><circle cx="33" cy="38" r="2.6"/><circle cx="33" cy="45" r="2.6"/>
+    <circle cx="40" cy="24" r="2.6"/><circle cx="47" cy="24" r="2.6"/><circle cx="47" cy="31" r="2.6"/><circle cx="47" cy="38" r="2.6"/><circle cx="47" cy="45" r="2.6"/>
+  </g>
+  <circle cx="55" cy="45" r="2.6" fill="#7ed492"/>
 </svg>

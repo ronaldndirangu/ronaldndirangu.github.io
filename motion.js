@@ -29,33 +29,35 @@
   }
 
   const metrics = [...document.querySelectorAll('.metric dt')].map((dt) => {
-    const final = dt.textContent.trim();
-    const match = final.match(/^(\d+)(.*)$/);
-    if (!match) return null;
+    const first = dt.firstChild;
+    const n = first && first.nodeType === Node.TEXT_NODE ? parseInt(first.textContent, 10) : NaN;
+    if (Number.isNaN(n)) return null;
+    const unit = dt.querySelector('.unit');
     const label = document.createElement('span');
     label.className = 'sr-only';
-    label.textContent = final;
+    label.textContent = dt.textContent.trim();
     const shown = document.createElement('span');
     shown.setAttribute('aria-hidden', 'true');
-    shown.textContent = final;
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = String(n);
+    shown.append(num);
+    if (unit) shown.append(unit);
     dt.replaceChildren(label, shown);
-    return { dt, shown, final, n: Number(match[1]), suffix: match[2], done: false };
+    return { dt, num, n, from: Number(dt.dataset.from) || 0, done: false };
   }).filter(Boolean);
 
   function count(m) {
     if (m.done) return;
     m.done = true;
     m.dt.parentElement.classList.add('is-counted');
-    if (!lively()) {
-      m.shown.textContent = m.final;
-      return;
-    }
+    if (!lively()) return;
     const start = performance.now();
+    m.num.textContent = String(m.from);
     const tick = (t) => {
-      const p = clamp((t - start) / 1400, 0, 1);
-      m.shown.textContent = Math.round(m.n * (1 - Math.pow(1 - p, 4))) + m.suffix;
+      const p = clamp((t - start) / 1100, 0, 1);
+      m.num.textContent = String(Math.round(m.from + (m.n - m.from) * (1 - Math.pow(1 - p, 4))));
       if (p < 1) requestAnimationFrame(tick);
-      else m.shown.textContent = m.final;
     };
     requestAnimationFrame(tick);
   }
@@ -71,11 +73,10 @@
       }
     }, { rootMargin: '0px 0px -8% 0px' });
 
-    const targets = document.querySelectorAll('.section-head, .split-head, .job, .card, .skill-group, .sub-head, .edu li, .contact-card > *');
+    const targets = document.querySelectorAll('.section-head, .job, .card, .manifest-row, .sub-head, .edu li, .contact-card > *');
     for (const el of targets) {
       if (el.getBoundingClientRect().top < window.innerHeight) continue;
       el.classList.add('reveal');
-      el.querySelectorAll('.tags li').forEach((li, i) => li.style.setProperty('--i', String(i)));
       reveal.observe(el);
     }
 
@@ -83,77 +84,117 @@
       for (const e of entries) {
         if (!e.isIntersecting) continue;
         const m = metrics.find((x) => x.dt === e.target);
-        if (m) setTimeout(() => count(m), 250);
+        if (m) setTimeout(() => count(m), 120);
         counter.unobserve(e.target);
       }
-    }, { threshold: 1, rootMargin: '0px 0px -5% 0px' });
-    for (const m of metrics) {
-      m.shown.textContent = '0' + m.suffix;
-      counter.observe(m.dt);
-    }
+    }, { threshold: 0.35 });
+    for (const m of metrics) counter.observe(m.dt);
   } else {
     metrics.forEach((m) => { m.done = true; });
   }
 
-  document.querySelectorAll('.shot').forEach((shot) => {
-    shot.addEventListener('pointermove', (e) => {
+  const ship = document.querySelector('.ship');
+  if (ship) {
+    const button = ship.querySelector('[data-ship]');
+    const stages = [...ship.querySelectorAll('[data-stage]')];
+    const log = ship.querySelector('.ship-log');
+    const wait = (ms) => new Promise((done) => setTimeout(done, ms));
+    const say = (text, warn = false) => {
+      log.textContent = text;
+      log.classList.toggle('is-warn', warn);
+    };
+    const mark = (li, state) => {
+      li.classList.remove('is-run', 'is-ok', 'is-fail');
+      if (state) li.classList.add(state);
+    };
+    let runs = 0;
+    let busy = false;
+
+    const run = async ({ drop = true, step = 380 } = {}) => {
+      if (busy) return;
+      busy = true;
+      button.disabled = true;
+      ship.classList.remove('is-done');
+      stages.forEach((li) => mark(li, null));
+      if (!lively()) {
+        stages.forEach((li) => mark(li, 'is-ok'));
+        say('deployed ✓');
+      } else {
+        // Every third manual run hits a flaky test so the pipeline has something to recover from.
+        const flaky = drop && runs++ % 3 === 1;
+        for (const li of stages) {
+          const stage = li.textContent.trim();
+          mark(li, 'is-run');
+          say(`${stage}…`);
+          await wait(step);
+          if (flaky && stage === 'test') {
+            mark(li, 'is-fail');
+            say('test failed, retrying', true);
+            await wait(900);
+            mark(li, 'is-run');
+            say('retry 1/1…');
+            await wait(step + 120);
+            mark(li, 'is-ok');
+            say('retry 1/1 passed');
+            await wait(500);
+            continue;
+          }
+          mark(li, 'is-ok');
+        }
+        if (drop) {
+          window.__namePhysics?.drop();
+          const ticker = document.querySelector('.ticker');
+          ticker?.classList.remove('is-replay');
+          void ticker?.offsetWidth;
+          ticker?.classList.add('is-replay');
+        }
+        say('deployed ✓');
+      }
+      ship.classList.add('is-done');
+      button.disabled = false;
+      busy = false;
+    };
+
+    button.addEventListener('click', () => run());
+    if (lively() && !ship.closest('[hidden]')) setTimeout(() => run({ drop: false, step: 260 }), 600);
+  }
+
+  const clock = document.querySelector('[data-clock]');
+  if (clock && 'Intl' in window) {
+    const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Nairobi', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    const tickClock = () => { clock.textContent = `${fmt.format(new Date())} EAT`; };
+    tickClock();
+    setInterval(tickClock, 30000);
+  }
+
+  const timeline = document.querySelector('.timeline');
+  if (timeline && motionOn) {
+    let queued = false;
+    const fill = () => {
+      queued = false;
+      const r = timeline.getBoundingClientRect();
+      const p = clamp((window.innerHeight * 0.62 - r.top) / r.height, 0, 1);
+      timeline.style.setProperty('--fill', p.toFixed(4));
+    };
+    const request = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(fill);
+    };
+    window.addEventListener('scroll', request, { passive: true });
+    window.addEventListener('resize', request);
+    fill();
+  }
+
+  document.querySelectorAll('.board').forEach((board) => {
+    board.addEventListener('pointermove', (e) => {
       if (!fine.matches || !lively() || e.pointerType !== 'mouse') return;
-      const r = shot.getBoundingClientRect();
-      const x = clamp((e.clientX - r.left) / r.width, 0, 1);
-      const y = clamp((e.clientY - r.top) / r.height, 0, 1);
-      shot.classList.add('is-tilting');
-      shot.style.setProperty('--ry', `${((x - 0.5) * 8).toFixed(2)}deg`);
-      shot.style.setProperty('--rx', `${((0.5 - y) * 6).toFixed(2)}deg`);
-      shot.style.setProperty('--gx', `${(x * 100).toFixed(1)}%`);
-      shot.style.setProperty('--gy', `${(y * 100).toFixed(1)}%`);
+      const r = board.getBoundingClientRect();
+      board.style.setProperty('--sx', `${(e.clientX - r.left).toFixed(0)}px`);
+      board.style.setProperty('--sy', `${(e.clientY - r.top).toFixed(0)}px`);
+      board.classList.add('is-lit');
     });
-    shot.addEventListener('pointerleave', () => {
-      shot.classList.remove('is-tilting');
-      for (const p of ['--rx', '--ry', '--gx', '--gy']) shot.style.removeProperty(p);
-    });
-  });
-
-  document.querySelectorAll('.link-pill').forEach((pill) => {
-    pill.addEventListener('pointermove', (e) => {
-      if (!fine.matches || !lively()) return;
-      const r = pill.getBoundingClientRect();
-      const dx = clamp((e.clientX - r.left - r.width / 2) * 0.2, -8, 8);
-      const dy = clamp((e.clientY - r.top - r.height / 2) * 0.3, -6, 6);
-      pill.style.setProperty('--mx', `${dx.toFixed(1)}px`);
-      pill.style.setProperty('--my', `${dy.toFixed(1)}px`);
-    });
-    pill.addEventListener('pointerleave', () => {
-      pill.style.removeProperty('--mx');
-      pill.style.removeProperty('--my');
-    });
-  });
-
-  document.addEventListener('copied', (e) => {
-    if (!lively() || !(e.target instanceof Element)) return;
-    const r = e.target.getBoundingClientRect();
-    const x = r.left + Math.min(r.width / 2, 40);
-    const y = r.top + r.height / 2;
-    const layer = document.createElement('div');
-    layer.className = 'burst';
-    layer.setAttribute('aria-hidden', 'true');
-    for (let i = 0; i < 24; i++) {
-      const bit = document.createElement('i');
-      bit.style.left = `${x}px`;
-      bit.style.top = `${y}px`;
-      layer.appendChild(bit);
-      const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.2;
-      const speed = 70 + Math.random() * 120;
-      const dx = Math.cos(angle) * speed;
-      const dy = Math.sin(angle) * speed;
-      const spin = (Math.random() - 0.5) * 720;
-      bit.animate([
-        { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', opacity: 1 },
-        { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${(spin / 2).toFixed(0)}deg) scale(1)`, opacity: 1, offset: 0.45 },
-        { transform: `translate(${(dx * 1.3).toFixed(1)}px, ${(dy + 150).toFixed(1)}px) rotate(${spin.toFixed(0)}deg) scale(0.5)`, opacity: 0 },
-      ], { duration: 1000 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' });
-    }
-    document.body.appendChild(layer);
-    setTimeout(() => layer.remove(), 1600);
+    board.addEventListener('pointerleave', () => board.classList.remove('is-lit'));
   });
 
   const physics = window.__namePhysics;
@@ -193,7 +234,7 @@
   setInterval(() => {
     const now = performance.now();
     if (!lively() || document.hidden || !physics.settled() || !nameInView()) return;
-    if (now - idleSince < 5000 || now - lastFidget < 6000) return;
+    if (now - idleSince < 15000 || now - lastFidget < 20000) return;
     lastFidget = now;
     physics.hop(Math.floor(Math.random() * physics.letters.length), 0.3);
   }, 1000);

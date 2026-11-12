@@ -140,8 +140,6 @@
 
   measure();
   if (hint) hint.hidden = reduce.matches;
-  const dropButton = document.querySelector('[data-drop]');
-  if (dropButton) dropButton.addEventListener('click', () => { measure(); drop(); });
 
   name.addEventListener('pointermove', brush);
   name.addEventListener('pointerleave', () => { ptr = null; });
@@ -173,7 +171,7 @@
   window.__namePhysics = {
     letters,
     hop,
-    drop,
+    drop: () => { measure(); drop(); },
     settled: () => !raf,
   };
 })();

@@ -41,9 +41,13 @@
     const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
     if (atBottom && sections.length) current = sections[sections.length - 1];
     const id = current ? current.id : '';
+    const idx = current ? sections.indexOf(current) : -1;
     for (const a of navAnchors) {
-      if (a.getAttribute('href') === '#' + id) a.setAttribute('aria-current', 'true');
+      const href = a.getAttribute('href');
+      if (href === '#' + id) a.setAttribute('aria-current', 'true');
       else a.removeAttribute('aria-current');
+      const i = sections.findIndex((s) => '#' + s.id === href);
+      a.toggleAttribute('data-passed', i > -1 && i < idx);
     }
   }
   function requestUpdate() {
