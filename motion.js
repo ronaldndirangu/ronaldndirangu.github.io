@@ -73,7 +73,7 @@
       }
     }, { rootMargin: '0px 0px -8% 0px' });
 
-    const targets = document.querySelectorAll('.section-head, .job, .card, .manifest-row, .sub-head, .edu li, .contact-card > *');
+    const targets = document.querySelectorAll('.section-head, .job, .card, .manifest-row, .sub-head, .edu li, .contact-main > *, .status-cell');
     for (const el of targets) {
       if (el.getBoundingClientRect().top < window.innerHeight) continue;
       el.classList.add('reveal');
@@ -141,13 +141,7 @@
           }
           mark(li, 'is-ok');
         }
-        if (drop) {
-          window.__namePhysics?.drop();
-          const ticker = document.querySelector('.ticker');
-          ticker?.classList.remove('is-replay');
-          void ticker?.offsetWidth;
-          ticker?.classList.add('is-replay');
-        }
+        if (drop) window.__namePhysics?.drop();
         say('deployed ✓');
       }
       ship.classList.add('is-done');
@@ -159,10 +153,13 @@
     if (lively() && !ship.closest('[hidden]')) setTimeout(() => run({ drop: false, step: 260 }), 600);
   }
 
-  const clock = document.querySelector('[data-clock]');
-  if (clock && 'Intl' in window) {
+  const clocks = document.querySelectorAll('[data-clock]');
+  if (clocks.length && 'Intl' in window) {
     const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Nairobi', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-    const tickClock = () => { clock.textContent = `${fmt.format(new Date())} EAT`; };
+    const tickClock = () => {
+      const time = fmt.format(new Date());
+      clocks.forEach((el) => { el.textContent = 'clockBare' in el.dataset ? time : `${time} EAT`; });
+    };
     tickClock();
     setInterval(tickClock, 30000);
   }
